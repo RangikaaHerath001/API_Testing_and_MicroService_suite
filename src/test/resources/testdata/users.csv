@@ -1,0 +1,5 @@
+username,email,expectedStatus
+john.doe,john@example.com,201
+jane.smith,jane@example.com,201
+invalid@,invalid,400
+test.user,test@example.com,201

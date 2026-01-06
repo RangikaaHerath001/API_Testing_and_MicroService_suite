@@ -1,87 +1,72 @@
 package com.apitesting.tests;
 
 import com.apitesting.models.User;
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
+import com.apitesting.utils.APIHelper;
+import com.apitesting.utils.ResponseValidator;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.*;
-import static org.hamcrest.Matchers.*;
+import org.junit.jupiter.api.DisplayName;
 
 public class UserAPITest {
+    private APIHelper apiHelper;
 
-    @BeforeAll
-    public static void setup() {
-        // Set base URI for your API
-        RestAssured.baseURI = "https://jsonplaceholder.typicode.com";
+    @BeforeEach
+    public void setup() {
+        apiHelper = new APIHelper();
     }
 
     @Test
+    @DisplayName("Verify GET request returns all users")
     public void testGetAllUsers() {
-        // Send GET request and verify response
-        given()
-                .when()
-                .get("/users")
-                .then()
-                .statusCode(200)
-                .body("size()", greaterThan(0));
+        Response response = apiHelper.get("/users");
+
+        ResponseValidator.validateStatusCode(response, 200);
+        ResponseValidator.validateResponseTime(response, 2000);
+
+        int userCount = response.jsonPath().getList("$").size();
+        assert userCount > 0 : "User list should not be empty";
     }
 
     @Test
+    @DisplayName("Verify GET request returns single user by ID")
     public void testGetSingleUser() {
-        given()
-                .pathParam("id", 1)
-                .when()
-                .get("/users/{id}")
-                .then()
-                .statusCode(200)
-                .body("id", equalTo(1))
-                .body("username", notNullValue());
+        Response response = apiHelper.get("/users/{id}", 1);
+
+        ResponseValidator.validateStatusCode(response, 200);
+        ResponseValidator.validateFieldValue(response, "id", 1);
+        ResponseValidator.validateFieldNotNull(response, "username");
+        ResponseValidator.validateFieldNotNull(response, "email");
     }
 
     @Test
+    @DisplayName("Verify POST request creates new user")
     public void testCreateUser() {
         User newUser = new User("john.doe", "john@example.com");
 
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .body(newUser)
-                .when()
-                .post("/users")
-                .then()
-                .statusCode(201)
-                .body("username", equalTo("john.doe"))
-                .body("email", equalTo("john@example.com"))
-                .extract().response();
+        Response response = apiHelper.post("/users", newUser);
 
-        // You can also extract and verify the ID
-        int userId = response.path("id");
-        System.out.println("Created user with ID: " + userId);
+        ResponseValidator.validateStatusCode(response, 201);
+        ResponseValidator.validateFieldValue(response, "username", "john.doe");
+        ResponseValidator.validateFieldValue(response, "email", "john@example.com");
+        ResponseValidator.validateFieldNotNull(response, "id");
     }
 
     @Test
+    @DisplayName("Verify PUT request updates existing user")
     public void testUpdateUser() {
         User updatedUser = new User("john.updated", "john.updated@example.com");
 
-        given()
-                .contentType(ContentType.JSON)
-                .pathParam("id", 1)
-                .body(updatedUser)
-                .when()
-                .put("/users/{id}")
-                .then()
-                .statusCode(200);
+        Response response = apiHelper.put("/users/{id}", 1, updatedUser);
+
+        ResponseValidator.validateStatusCode(response, 200);
     }
 
     @Test
+    @DisplayName("Verify DELETE request removes user")
     public void testDeleteUser() {
-        given()
-                .pathParam("id", 1)
-                .when()
-                .delete("/users/{id}")
-                .then()
-                .statusCode(200);
+        Response response = apiHelper.delete("/users/{id}", 1);
+
+        ResponseValidator.validateStatusCode(response, 200);
     }
 }
